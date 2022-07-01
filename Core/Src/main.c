@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +44,7 @@
 /* Private variables ---------------------------------------------------------*/
  TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart1;
@@ -53,8 +55,13 @@ DMA_HandleTypeDef hdma_usart1_tx;
 uint8_t dataRec[UART_REC_BUFF_SIZE];
 uint8_t dataTran[UART_TRAN_SIZE];
 
-int velLeft;
-int velRight;
+int16_t velLeft;
+int16_t velRight;
+
+uint32_t encoder_pulse1 = 0, encoder_pulse2 = 0;
+uint32_t count_temp1 = 0, count_temp2 = 0, count_test=0;
+uint32_t count_recent1 =0, count_recent2 =0, count_update1=0, count_update2=0;
+int16_t motor_speed1=0, motor_speed2 =0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,6 +72,7 @@ static void MX_TIM3_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM8_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -107,23 +115,68 @@ int main(void)
   MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_TIM8_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_DMA(&huart1, dataRec, UART_REC_BUFF_SIZE);
 
   memset(dataTran, 0, UART_TRAN_SIZE);
   HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
-  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
+//  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+  HAL_TIM_Base_Start_IT(&htim4);
+  HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint16_t pwmLeft = 0;
+  uint16_t pwmRight = 0;
   while (1)
   {
 //	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
+	HAL_Delay(10);
+	  pwmLeft = abs((uint16_t)(velLeft*1000/37));
+	  pwmRight = abs((uint16_t)(velRight*1000/37));
+	  pwmLeft = (pwmLeft > 1000) ? 1000 : pwmLeft;
+	  pwmRight = (pwmRight> 1000) ? 1000 : pwmRight;
+	  if(velLeft > 0){
+		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+		  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
+		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
+	  }
+	  else if (velLeft < 0) {
+		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+		  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
+		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
+	  }
+	  else {
+		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+	  }
+
+
+	  if(velRight < 0){
+		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
+		  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
+	  }
+	  else if (velRight > 0){
+		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+		  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
+		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
+	  }
+	  else {
+		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
+	  }
+
+
+//	char msg[50];
+//	sprintf(msg, "SL: %i - SR: %i\n", motor_speed1, motor_speed2);
+//	HAL_UART_Transmit_DMA(&huart1, (uint8_t*)msg, strlen(msg));
 //	HAL_Delay(500);
-	  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, velLeft);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -189,7 +242,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 7200-1;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 65535;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -238,9 +291,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 7200-1;
+  htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1000-1;
+  htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
@@ -265,6 +318,51 @@ static void MX_TIM3_Init(void)
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 7200-1;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 99;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
 
 }
 
@@ -456,7 +554,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		dataTran[i] = dataRec[i];
 	}
 	dataTran[cmdLen-1] = 0x3F;
-	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
+
+	char msg[30];
+	sprintf(msg, "velL: %i, velR: %i\n", velLeft, velRight);
+
+	//	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
+		HAL_UART_Transmit_DMA(&huart1, (uint8_t*)msg, strlen(msg));
 //	HAL_StatusTypeDef tranRes = HAL_UART_Transmit(&huart1, dataRec, UART_REC_BUFF_SIZE, 500);
 //    HAL_UART_Receive_DMA(&huart1, dataRec, UART_REC_BUFF_SIZE);
 }

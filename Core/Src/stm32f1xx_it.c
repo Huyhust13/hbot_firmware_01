@@ -22,6 +22,8 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "string.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,7 +38,12 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-extern uint8_t dataTran[8];
+
+extern uint32_t encoder_pulse1, encoder_pulse2;
+extern uint32_t count_temp1 , count_temp2 , count_test;
+extern uint32_t count_recent1 , count_recent2 , count_update1, count_update2;
+extern int16_t motor_speed1, motor_speed2;
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -55,6 +62,9 @@ extern uint8_t dataTran[8];
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
@@ -221,12 +231,104 @@ void DMA1_Channel4_IRQHandler(void)
 void DMA1_Channel5_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-	dataTran[0] += 1;
+
   /* USER CODE END DMA1_Channel5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
   /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
 //  HAL_UART_Transmit_DMA(&huart1, dataRec, 16);
   /* USER CODE END DMA1_Channel5_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM2 global interrupt.
+  */
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+  uint16_t timer_temp1;
+//  if(__HAL_TIM_GET_FLAG(&htim2, TIM_FLAG_UPDATE)){
+	  __HAL_TIM_CLEAR_FLAG(&htim2, TIM_FLAG_UPDATE);
+	  timer_temp1 = __HAL_TIM_GET_COUNTER(&htim2);
+	  if(timer_temp1 == 65535) 	count_temp1--;
+	  if(timer_temp1 == 0) 		count_temp1++;
+//  }
+  /* USER CODE END TIM2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM3 global interrupt.
+  */
+void TIM3_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM3_IRQn 0 */
+
+  /* USER CODE END TIM3_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim3);
+  /* USER CODE BEGIN TIM3_IRQn 1 */
+  uint16_t timer_temp2;
+//    if(__HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_UPDATE)){
+  	  __HAL_TIM_CLEAR_FLAG(&htim3, TIM_FLAG_UPDATE);
+  	  timer_temp2 = __HAL_TIM_GET_COUNTER(&htim3);
+  	  if(timer_temp2 == 65535) 	count_temp2--;
+  	  if(timer_temp2 == 0) 		count_temp2++;
+//    }
+  /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+	/* USER CODE BEGIN TIM4_IRQn 0 */
+
+	/* USER CODE END TIM4_IRQn 0 */
+	HAL_TIM_IRQHandler(&htim4);
+	/* USER CODE BEGIN TIM4_IRQn 1 */
+//	if(__HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE)){
+		__HAL_TIM_CLEAR_FLAG(&htim4, TIM_FLAG_UPDATE);
+		encoder_pulse1 =  __HAL_TIM_GET_COUNTER(&htim2) + 65536*count_temp1;
+		encoder_pulse2 =  __HAL_TIM_GET_COUNTER(&htim3) + 65536*count_temp2;
+		count_recent1 = encoder_pulse1;
+		count_recent2 = encoder_pulse2;
+		if (count_recent1 > count_update1)
+		{
+			motor_speed1 = (int16_t)((count_recent1 - count_update1)*6000*100/2970/2);  //ngat 10ms , encoder 85 xung
+		}
+		else if (count_recent1 < count_update1)
+		{
+			motor_speed1 = 0- (int16_t)((count_update1 - count_recent1)*6000*100/2970/2);  //ngat 10ms , encoder 85 xung
+		}
+		else {	motor_speed1 = 0;  }
+
+		/*calculate motor 2 speed*/
+		if (count_recent2 > count_update2)
+		{
+			motor_speed2 = (int16_t)((count_recent2 - count_update2)*6000*100/2970/2);  //ngat 10ms , encoder 85 xung
+		}
+		else if (count_recent2 < count_update2)
+		{
+			motor_speed2 = 0- (int16_t)((count_update2 - count_recent2)*6000*100/2970/2);  //ngat 10ms , encoder 85xung
+		}
+		else{	motor_speed2 = 0;  }
+		/*update count 1 and count 2*/
+		count_update1 = count_recent1;
+		count_update2 = count_recent2;
+
+		count_test += 1;
+		if(count_test >= 10) {
+			char msg[50];
+			sprintf(msg, "SL: %i - SR: %i\n", motor_speed1, motor_speed2);
+//			sprintf(msg, "SL: %i\n", motor_speed1);
+			HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg),100);
+			count_test = 0;
+		}
+//	}
+  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**
