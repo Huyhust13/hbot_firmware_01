@@ -32,8 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define UART_REC_BUFF_SIZE 8
-#define UART_TRAN_SIZE 8
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,8 +51,8 @@ DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-uint8_t dataRec[UART_REC_BUFF_SIZE];
-uint8_t dataTran[UART_TRAN_SIZE];
+uint8_t dataRec[UART_REC_BUFFER_SIZE];
+uint8_t dataTran[UART_TRAN_BUFFER_SIZE];
 
 int16_t velLeft;
 int16_t velRight;
@@ -61,6 +60,7 @@ int16_t velRight;
 uint32_t encoder_pulse1 = 0, encoder_pulse2 = 0;
 uint32_t count_temp1 = 0, count_temp2 = 0, count_test=0;
 uint32_t count_recent1 =0, count_recent2 =0, count_update1=0, count_update2=0;
+uint32_t tran_cnt = 0, rec_cnt = 0;
 int16_t motor_speed1=0, motor_speed2 =0;
 /* USER CODE END PV */
 
@@ -117,10 +117,10 @@ int main(void)
   MX_TIM8_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_DMA(&huart1, dataRec, UART_REC_BUFF_SIZE);
+  HAL_UART_Receive_DMA(&huart1, dataRec, UART_REC_BUFFER_SIZE);
 
-  memset(dataTran, 0, UART_TRAN_SIZE);
-  HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
+  memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
+  HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
 //  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
@@ -135,7 +135,7 @@ int main(void)
   uint16_t pwmRight = 0;
   while (1)
   {
-//	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
+//	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
 	HAL_Delay(10);
 	  pwmLeft = abs((uint16_t)(velLeft*1000/37));
 	  pwmRight = abs((uint16_t)(velRight*1000/37));
@@ -529,39 +529,61 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	__NOP();
 	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-	memset(dataTran, 0, UART_TRAN_SIZE);
+	memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
 	dataTran[0] = 0x2B;
 
 	u_int8_t cmdLen = dataRec[1];
+
 	if (dataRec[0] != 0x2A || dataRec[cmdLen-1] != 0x3E) {
-		dataTran[1] = 0x05;
-		dataTran[2] = 0x30;
-		dataTran[4] = (u_int8_t)100;
-		dataTran[5] = 0x3F;
-		HAL_UART_Transmit_DMA(&huart1, dataTran, 5);
+		//TODO: do this later
+//		dataTran[1] = 0x05;
+//		dataTran[2] = 0x30;
+//		dataTran[4] = (u_int8_t)100;
+//		dataTran[5] = 0x3F;
+//		HAL_UART_Transmit_DMA(&huart1, dataTran, 5);
 		return;
 	}
 
-	u_int8_t cmd	= dataRec[2];
 
-	if (cmd == 0x00) {
-		velLeft = (int)dataRec[3] << 8 | dataRec[4];
-		velRight = (int)dataRec[5] << 8 | dataRec[6];
+	u_int8_t cmd_count_add = 3;
+	uint32_t curr_rec_count = (uint32_t)dataRec[cmd_count_add] << 24 | (uint32_t)dataRec[cmd_count_add+1] << 16
+								| (uint32_t)dataRec[cmd_count_add+2] << 8 | dataRec[cmd_count_add+3];
+	if(curr_rec_count == rec_cnt) return;
+	rec_cnt = curr_rec_count;
+
+	u_int8_t cmd	= dataRec[2];
+	uint8_t params_add = cmd_count_add + 4;
+	switch (cmd) {
+		case 0x00:
+			velLeft = (int)dataRec[params_add] << 8 | dataRec[params_add+1];
+			velRight = (int)dataRec[params_add+2] << 8 | dataRec[params_add+3];
+
+			tran_cnt++;
+			dataTran[1] = (uint8_t)12;
+			dataTran[2] = 0x10;
+
+			dataTran[3] = tran_cnt >> 24;
+			dataTran[4] = tran_cnt >> 16;
+			dataTran[5] = tran_cnt >> 8;
+			dataTran[6] = tran_cnt;
+
+			for (int i = params_add; i<cmdLen-1; i++) {
+				dataTran[i] = dataRec[i];
+			}
+			dataTran[cmdLen-1] = 0x3F;
+			HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
+
+			break;
+		default:
+			break;
 	}
 
 	// Feedback cmd
-	for (int i = 1; i<cmdLen-1; i++) {
-		dataTran[i] = dataRec[i];
-	}
-	dataTran[cmdLen-1] = 0x3F;
 
-	char msg[30];
-	sprintf(msg, "velL: %i, velR: %i\n", velLeft, velRight);
-
-	//	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_SIZE);
-		HAL_UART_Transmit_DMA(&huart1, (uint8_t*)msg, strlen(msg));
-//	HAL_StatusTypeDef tranRes = HAL_UART_Transmit(&huart1, dataRec, UART_REC_BUFF_SIZE, 500);
-//    HAL_UART_Receive_DMA(&huart1, dataRec, UART_REC_BUFF_SIZE);
+//	char msg[30];
+//	sprintf(msg, "velL: %i, velR: %i\n", velLeft, velRight);
+//
+//	HAL_UART_Transmit_DMA(&huart1, (uint8_t*)msg, strlen(msg));
 }
 
 

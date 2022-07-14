@@ -64,7 +64,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
 #define LED1_Pin GPIO_PIN_2
 #define LED1_GPIO_Port GPIOD
 /* USER CODE BEGIN Private defines */
-
+#define UART_REC_BUFFER_SIZE 12
+#define UART_TRAN_BUFFER_SIZE 12
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
