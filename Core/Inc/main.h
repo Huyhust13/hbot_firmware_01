@@ -37,6 +37,26 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+typedef enum {
+  WAITING_START  = 0x00U,
+  WAITING_HEADER = 0x01U,
+  WAITING_MSG    = 0x02U,
+}UART_Rec_State;
+
+typedef enum {
+  PID_KP = 0x00U,
+  PID_KI = 0x01U,
+  PID_KD = 0x02U
+}PID;
+
+typedef enum {
+  CMD_FB_VEL      = 0x00U,
+  CMD_SET_VEL     = 0x50U,
+  CMD_SET_PID_KP  = 0x55U,
+  CMD_SET_PID_KI  = 0x56U,
+  CMD_SET_PID_KD  = 0x57U,
+  CMD_STATUS       = 0x30U
+}CMD_Type;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -58,6 +78,9 @@ void Error_Handler(void);
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
+void handleMessage();
+void setRpm(int16_t left, int16_t right);
+void responseCmd(CMD_Type type);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -66,6 +89,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE BEGIN Private defines */
 #define UART_REC_BUFFER_SIZE 12
 #define UART_TRAN_BUFFER_SIZE 12
+#define UART_HEADER_SIZE 6
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

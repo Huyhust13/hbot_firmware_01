@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
 #include "stdlib.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +54,9 @@ DMA_HandleTypeDef hdma_usart1_tx;
 /* USER CODE BEGIN PV */
 uint8_t dataRec[UART_REC_BUFFER_SIZE];
 uint8_t dataTran[UART_TRAN_BUFFER_SIZE];
+// uint8_t dataRecHeader[UART_HEADER_SIZE];
+// uint8_t dataMsgRec[UART_REC_BUFFER_SIZE];
+UART_Rec_State uart_rec_stage_ = WAITING_START;
 
 int16_t velLeft;
 int16_t velRight;
@@ -62,6 +66,8 @@ uint32_t count_temp1 = 0, count_temp2 = 0, count_test=0;
 uint32_t count_recent1 =0, count_recent2 =0, count_update1=0, count_update2=0;
 uint32_t tran_cnt = 0, rec_cnt = 0;
 int16_t motor_speed1=0, motor_speed2 =0;
+
+float kp, ki, kd; // need save to ROM
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,13 +123,14 @@ int main(void)
   MX_TIM8_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_DMA(&huart1, dataRec, UART_REC_BUFFER_SIZE);
+  uart_rec_stage_ = WAITING_START;
+  HAL_UART_Receive_DMA(&huart1, dataRec, 1);
 
-  memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
-  HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
-  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
+  // memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
+  // HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
+  // HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
 //  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+  // HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
@@ -131,46 +138,46 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint16_t pwmLeft = 0;
-  uint16_t pwmRight = 0;
+  // uint16_t pwmLeft = 0;
+  // uint16_t pwmRight = 0;
   while (1)
   {
 //	HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
-	HAL_Delay(10);
-	  pwmLeft = abs((uint16_t)(velLeft*1000/37));
-	  pwmRight = abs((uint16_t)(velRight*1000/37));
-	  pwmLeft = (pwmLeft > 1000) ? 1000 : pwmLeft;
-	  pwmRight = (pwmRight> 1000) ? 1000 : pwmRight;
-	  if(velLeft > 0){
-		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
-		  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
-		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
-	  }
-	  else if (velLeft < 0) {
-		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
-		  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
-		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
-	  }
-	  else {
-		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
-		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
-	  }
+	// HAL_Delay(10);
+	//   pwmLeft = abs((uint16_t)(velLeft*1000/37));
+	//   pwmRight = abs((uint16_t)(velRight*1000/37));
+	//   pwmLeft = (pwmLeft > 1000) ? 1000 : pwmLeft;
+	//   pwmRight = (pwmRight> 1000) ? 1000 : pwmRight;
+	//   if(velLeft > 0){
+	// 	  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+	// 	  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
+	// 	  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
+	//   }
+	//   else if (velLeft < 0) {
+	// 	  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+	// 	  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
+	// 	  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
+	//   }
+	//   else {
+	// 	  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+	// 	  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+	//   }
 
 
-	  if(velRight < 0){
-		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
-		  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
-		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
-	  }
-	  else if (velRight > 0){
-		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
-		  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
-		  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
-	  }
-	  else {
-		  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
-		  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
-	  }
+	//   if(velRight < 0){
+	// 	  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
+	// 	  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+	// 	  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
+	//   }
+	//   else if (velRight > 0){
+	// 	  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+	// 	  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
+	// 	  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
+	//   }
+	//   else {
+	// 	  HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+	// 	  HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
+	//   }
 
 
 //	char msg[50];
@@ -529,54 +536,37 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	__NOP();
 	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-	memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
-	dataTran[0] = 0x2B;
 
-	u_int8_t cmdLen = dataRec[1];
+  if (uart_rec_stage_ == WAITING_START){ //Process header
+    if(dataRec[0] != 0x2A) {
+      // Read until face start byte
+      HAL_UART_Receive_DMA(&huart1, dataRec, 1);
+    }
+    else {
+      uart_rec_stage_ = WAITING_HEADER;
+      HAL_UART_Receive_DMA(&huart1, dataRec, UART_HEADER_SIZE-1);
+    }
+    return;
+  }
 
-	if (dataRec[0] != 0x2A || dataRec[cmdLen-1] != 0x3E) {
-		//TODO: do this later
-//		dataTran[1] = 0x05;
-//		dataTran[2] = 0x30;
-//		dataTran[4] = (u_int8_t)100;
-//		dataTran[5] = 0x3F;
-//		HAL_UART_Transmit_DMA(&huart1, dataTran, 5);
-		return;
-	}
+  if (uart_rec_stage_ == WAITING_HEADER){
+    u_int8_t cmd_count_index = 0;
+    uint32_t curr_rec_count = (uint32_t)dataRec[cmd_count_index]   << 24
+                            | (uint32_t)dataRec[cmd_count_index+1] << 16
+                            | (uint32_t)dataRec[cmd_count_index+2] << 8
+                            | dataRec[cmd_count_index+3];
+    if(curr_rec_count == rec_cnt) return;
+    rec_cnt = curr_rec_count;
+    u_int8_t cmdLen = dataRec[cmd_count_index + 4];
+    HAL_UART_Receive_DMA(&huart1, dataRec, cmdLen - UART_HEADER_SIZE);
+  }
 
+  if (uart_rec_stage_ == WAITING_MSG) {
+    handleMessage();
+    uart_rec_stage_ = WAITING_START;
+    HAL_UART_Receive_DMA(&huart1, dataRec, 1);
+  }
 
-	u_int8_t cmd_count_add = 3;
-	uint32_t curr_rec_count = (uint32_t)dataRec[cmd_count_add] << 24 | (uint32_t)dataRec[cmd_count_add+1] << 16
-								| (uint32_t)dataRec[cmd_count_add+2] << 8 | dataRec[cmd_count_add+3];
-	if(curr_rec_count == rec_cnt) return;
-	rec_cnt = curr_rec_count;
-
-	u_int8_t cmd	= dataRec[2];
-	uint8_t params_add = cmd_count_add + 4;
-	switch (cmd) {
-		case 0x00:
-			velLeft = (int)dataRec[params_add] << 8 | dataRec[params_add+1];
-			velRight = (int)dataRec[params_add+2] << 8 | dataRec[params_add+3];
-
-			tran_cnt++;
-			dataTran[1] = (uint8_t)12;
-			dataTran[2] = 0x10;
-
-			dataTran[3] = tran_cnt >> 24;
-			dataTran[4] = tran_cnt >> 16;
-			dataTran[5] = tran_cnt >> 8;
-			dataTran[6] = tran_cnt;
-
-			for (int i = params_add; i<cmdLen-1; i++) {
-				dataTran[i] = dataRec[i];
-			}
-			dataTran[cmdLen-1] = 0x3F;
-			HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
-
-			break;
-		default:
-			break;
-	}
 
 	// Feedback cmd
 
@@ -589,6 +579,134 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 //	dataTran[7] += 1;
+}
+
+void handleMessage(){
+	u_int8_t cmd	= dataRec[0];
+	uint8_t params_index = 1;
+	switch (cmd) {
+		case 0x50: // Set rpm
+			velLeft = (int)dataRec[params_index] << 8 | dataRec[params_index+1];
+			velRight = (int)dataRec[params_index+2] << 8 | dataRec[params_index+3];
+      setRpm(velLeft, velRight);
+      responseCmd(CMD_SET_VEL);
+      break;
+    case 0x55: // Set Kp
+      memcpy(&kp, &dataRec[params_index], 4);
+      responseCmd(CMD_SET_PID_KP);
+			break;
+    case 0x56: // Set Kp
+      memcpy(&ki, &dataRec[params_index], 4);
+      responseCmd(CMD_SET_PID_KI);
+			break;
+    case 0x57: // Set Kp
+      memcpy(&kd, &dataRec[params_index], 4);
+      responseCmd(CMD_SET_PID_KD);
+			break;
+		default:
+			break;
+	}
+}
+
+void setRpm(int16_t velLeft, int16_t velRight) {
+  uint16_t pwmLeft = 0;
+  uint16_t pwmRight = 0;
+  pwmLeft = abs((uint16_t)(velLeft*1000/37));
+  pwmRight = abs((uint16_t)(velRight*1000/37));
+  pwmLeft = (pwmLeft > 1000) ? 1000 : pwmLeft;
+  pwmRight = (pwmRight> 1000) ? 1000 : pwmRight;
+  if(velLeft > 0){
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
+    __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
+  }
+  else if (velLeft < 0) {
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
+    __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_2, pwmLeft);
+  }
+  else {
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+  }
+
+  if(velRight < 0){
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+    __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
+  }
+  else if (velRight > 0){
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
+    __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, pwmRight);
+  }
+  else {
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);
+  }
+	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+}
+
+void responseCmd(CMD_Type cmd_type) {
+  memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
+  dataTran[0] = 0x2B;
+  tran_cnt++;
+  uint8_t cnt_index = 1;
+  dataTran[cnt_index] = tran_cnt >> 24;
+  dataTran[cnt_index + 1] = tran_cnt >> 16;
+  dataTran[cnt_index + 2] = tran_cnt >> 8;
+  dataTran[cnt_index + 3] = tran_cnt;
+  uint8_t msg_length_index = cnt_index + 4;
+  uint8_t cmd_type_index = msg_length_index + 1;
+  uint8_t msg_index = cmd_type_index + 1;
+  dataTran[cmd_type_index] = cmd_type;
+  uint8_t msg_length = 0;
+  switch (cmd_type)
+  {
+  case CMD_FB_VEL:
+    msg_length = (uint8_t)12;
+    dataTran[msg_length_index] = msg_length;
+    dataTran[msg_index] = motor_speed1 >> 8;
+    dataTran[msg_index+1] = motor_speed1;
+    dataTran[msg_index+2] = motor_speed2 >> 8;
+    dataTran[msg_index+3] = motor_speed2;
+    break;
+  case CMD_SET_VEL:
+    msg_length = (uint8_t)12;
+    dataTran[msg_length_index] = msg_length;
+    dataTran[msg_index] = velLeft >> 8;
+    dataTran[msg_index+1] = velLeft;
+    dataTran[msg_index+2] = velRight >> 8;
+    dataTran[msg_index+3] = velRight;
+    break;
+  case CMD_SET_PID_KP:
+    msg_length = (uint8_t)12;
+    dataTran[msg_length_index] = msg_length;
+    dataTran[msg_index] = (uint32_t)kp >> 24;
+    dataTran[msg_index+1] = (uint32_t)kp >> 16;
+    dataTran[msg_index+2] = (uint32_t)kp >> 8;
+    dataTran[msg_index+3] = (uint32_t)kp;
+  case CMD_SET_PID_KI:
+    msg_length = (uint8_t)12;
+    dataTran[msg_length_index] = msg_length;
+    dataTran[msg_index] = (uint32_t)kp >> 24;
+    dataTran[msg_index+1] = (uint32_t)kp >> 16;
+    dataTran[msg_index+2] = (uint32_t)kp >> 8;
+    dataTran[msg_index+3] = (uint32_t)kp;
+  case CMD_SET_PID_KD:
+    msg_length = (uint8_t)12;
+    dataTran[msg_length_index] = msg_length;
+    dataTran[msg_index] = (uint32_t)kp >> 24;
+    dataTran[msg_index+1] = (uint32_t)kp >> 16;
+    dataTran[msg_index+2] = (uint32_t)kp >> 8;
+    dataTran[msg_index+3] = (uint32_t)kp;
+  case CMD_STATUS:
+    break;
+  default:
+    break;
+  }
+  dataTran[msg_length-1] = 0x3F;
+  HAL_UART_Transmit_DMA(&huart1, dataTran, msg_length);
 }
 /* USER CODE END 4 */
 

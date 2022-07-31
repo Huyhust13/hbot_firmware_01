@@ -285,11 +285,11 @@ void TIM3_IRQHandler(void)
   */
 void TIM4_IRQHandler(void)
 {
-	/* USER CODE BEGIN TIM4_IRQn 0 */
+  /* USER CODE BEGIN TIM4_IRQn 0 */
 
-	/* USER CODE END TIM4_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim4);
-	/* USER CODE BEGIN TIM4_IRQn 1 */
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
 //	if(__HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE)){
 		__HAL_TIM_CLEAR_FLAG(&htim4, TIM_FLAG_UPDATE);
 		encoder_pulse1 =  __HAL_TIM_GET_COUNTER(&htim2) + 65536*count_temp1;
@@ -319,38 +319,7 @@ void TIM4_IRQHandler(void)
 		/*update count 1 and count 2*/
 		count_update1 = count_recent1;
 		count_update2 = count_recent2;
-
-//	    int fb_rpm_left_, fb_rpm_right_;
-
-	    { // Make transmit data
-		    memset(dataTran, 0, UART_TRAN_BUFFER_SIZE);
-		    dataTran[0] = 0x2B;
-		    dataTran[1] = (uint8_t)12;
-		    dataTran[2] = 0x00;
-
-		    tran_cnt++;
-		    dataTran[3] = tran_cnt >> 24;
-			dataTran[4] = tran_cnt >> 16;
-			dataTran[5] = tran_cnt >> 8;
-			dataTran[6] = tran_cnt;
-
-			dataTran[7] = motor_speed1 >> 8;
-			dataTran[8] = motor_speed1;
-			dataTran[9] = motor_speed2 >> 8;
-			dataTran[10] = motor_speed2;
-
-			dataTran[11] = 0x3F;
-			HAL_UART_Transmit_DMA(&huart1, dataTran, UART_TRAN_BUFFER_SIZE);
-	    }
-//		count_test += 1;
-//		if(count_test >= 10) {
-//			char msg[50];
-//			sprintf(msg, "SL: %i - SR: %i\n", motor_speed1, motor_speed2);
-//			HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg),100);
-//			count_test = 0;
-//		}
-//	}
-  /* USER CODE END TIM4_IRQn 1 */
+    // responseCmd(CMD_FB_VEL);
 }
 
 /**
