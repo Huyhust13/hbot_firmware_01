@@ -70,7 +70,7 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
-extern uint8_t dataTran[UART_TRAN_BUFFER_SIZE];
+
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -319,7 +319,7 @@ void TIM4_IRQHandler(void)
 		/*update count 1 and count 2*/
 		count_update1 = count_recent1;
 		count_update2 = count_recent2;
-    // responseCmd(CMD_FB_VEL);
+     responseCmd(CMD_FB_VEL);
 }
 
 /**

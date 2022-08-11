@@ -57,6 +57,10 @@ typedef enum {
   CMD_SET_PID_KD  = 0x57U,
   CMD_STATUS       = 0x30U
 }CMD_Type;
+
+typedef enum {
+	STATUS_CMD_FORMAT_WRONG = (uint8_t)100,
+}Status_Code;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -76,10 +80,6 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
-void handleMessage();
-void setRpm(int16_t left, int16_t right);
 void responseCmd(CMD_Type type);
 /* USER CODE END EFP */
 
@@ -87,9 +87,7 @@ void responseCmd(CMD_Type type);
 #define LED1_Pin GPIO_PIN_2
 #define LED1_GPIO_Port GPIOD
 /* USER CODE BEGIN Private defines */
-#define UART_REC_BUFFER_SIZE 12
-#define UART_TRAN_BUFFER_SIZE 12
-#define UART_HEADER_SIZE 6
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
