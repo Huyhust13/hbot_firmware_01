@@ -62,11 +62,9 @@ size_t recSize;
 int16_t velLeft;
 int16_t velRight;
 
-uint32_t encoder_pulse1 = 0, encoder_pulse2 = 0;
-uint32_t count_temp1 = 0, count_temp2 = 0, count_test=0;
-uint32_t count_recent1 =0, count_recent2 =0, count_update1=0, count_update2=0;
+uint32_t enc_pulse1 = 0, enc_pulse2 = 0, last_pulse1=0, last_pulse2=0;
 uint32_t tran_cnt = 0, rec_cnt = 0;
-int16_t motor_speed1=0, motor_speed2 =0;
+float real_rpm1=0, real_rpm2 =0;
 
 int32_t kp, ki, kd; // kx * 1000
 Status_Code status_code_;
@@ -84,7 +82,6 @@ static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM4_Init(void);
-
 /* USER CODE BEGIN PFP */
 //void RxRx
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
@@ -690,10 +687,10 @@ void responseCmd(CMD_Type cmd_type) {
   case CMD_FB_VEL:
     msg_length = (uint8_t)12;
     TranBuff[msg_length_index] = msg_length;
-    TranBuff[msg_index] = motor_speed1 >> 8;
-    TranBuff[msg_index+1] = motor_speed1;
-    TranBuff[msg_index+2] = motor_speed2 >> 8;
-    TranBuff[msg_index+3] = motor_speed2;
+    TranBuff[msg_index] = (int16_t)(real_rpm1*1000) >> 8;
+    TranBuff[msg_index+1] = (int16_t)(real_rpm1*1000);
+    TranBuff[msg_index+2] = (int16_t)(real_rpm2*1000) >> 8;
+    TranBuff[msg_index+3] = (int16_t)(real_rpm2*1000);
     break;
   case CMD_SET_VEL:
     msg_length = (uint8_t)12;
