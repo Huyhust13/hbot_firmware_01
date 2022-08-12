@@ -65,6 +65,7 @@ typedef enum {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+#define RPM_RATIO     0.5051 // 50*60/(2970*2)
 
 /* USER CODE END EC */
 

@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "stdio.h"
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +40,8 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-extern uint32_t enc_pulse1, enc_pulse2, last_pulse1, last_pulse2;
+extern uint32_t enc_pulse1, enc_pulse2;
+extern int64_t last_pulse1, last_pulse2;
 extern float real_rpm1, real_rpm2;
 extern uint32_t tran_cnt;
 
@@ -276,25 +278,24 @@ void TIM4_IRQHandler(void)
   // enc_pulse2 =  __HAL_TIM_GET_COUNTER(&htim3) + 65536*count_temp2;
   enc_pulse1 =  __HAL_TIM_GET_COUNTER(&htim2);
   enc_pulse2 =  __HAL_TIM_GET_COUNTER(&htim3);
-  if (enc_pulse1 > last_pulse1)
-  {
-          real_rpm1 = (float)(enc_pulse1 - last_pulse1) *60*50/(2970*2);  //ngat 20ms , encoder 2 kenh, 2970 xung/kenh
+
+  int64_t delta_pulse1 = enc_pulse1 - last_pulse1;
+  if (abs(delta_pulse1) < 30000){
+    real_rpm1 = (float)(delta_pulse1*RPM_RATIO);
   }
-  else if (enc_pulse1 < last_pulse1)
-  {
-          real_rpm1 = 0- (float)(last_pulse1 - enc_pulse1)*60*50/(2970*2);  //ngat 10ms , encoder 85 xung
+  else {
+    if(delta_pulse1 < 0) real_rpm1 = (float)((65536 + delta_pulse1)*RPM_RATIO);
+    else real_rpm1 = (float)((-65536 + delta_pulse1)*RPM_RATIO);
   }
-  else {  real_rpm1 = 0;  }
   /*calculate motor 2 speed*/
-  if (enc_pulse2 > last_pulse2)
-  {
-          real_rpm2 = (float)(enc_pulse2 - last_pulse2)*60*50/(2970*2);  //ngat 10ms , encoder 85 xung
+  int64_t delta_pulse2 = enc_pulse2 - last_pulse2;
+  if (abs(delta_pulse2) < 30000){
+    real_rpm2 = (float)(delta_pulse2*RPM_RATIO);
   }
-  else if (enc_pulse2 < last_pulse2)
-  {
-          real_rpm2 = 0- (float)(last_pulse2 - enc_pulse2)*60*50/(2970*2);  //ngat 10ms , encoder 85xung
+  else {
+    if(delta_pulse2 < 0) real_rpm2 = (float)((65536 + delta_pulse2)*RPM_RATIO);
+    else real_rpm2 = (float)((-65536 + delta_pulse2)*RPM_RATIO);
   }
-  else{   real_rpm2 = 0;  }
   /*update count 1 and count 2*/
   last_pulse1 = enc_pulse1;
   last_pulse2 = enc_pulse2;

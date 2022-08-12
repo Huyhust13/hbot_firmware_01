@@ -36,6 +36,7 @@
 #define RecBuff_SIZE		15
 #define MainBuff_SIZE 		12
 #define TranBuff_SIZE		50
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -62,7 +63,8 @@ size_t recSize;
 int16_t velLeft;
 int16_t velRight;
 
-uint32_t enc_pulse1 = 0, enc_pulse2 = 0, last_pulse1=0, last_pulse2=0;
+uint32_t enc_pulse1 = 0, enc_pulse2 = 0;
+int64_t last_pulse1=0, last_pulse2=0;
 uint32_t tran_cnt = 0, rec_cnt = 0;
 float real_rpm1=0, real_rpm2 =0;
 
